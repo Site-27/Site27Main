@@ -1,0 +1,68 @@
+﻿using Exiled.API.Features;
+using Exiled.API.Features.Attributes;
+using Exiled.API.Features.Spawn;
+using Exiled.CustomItems.API.Features;
+using Exiled.Events.EventArgs.Player;
+using System.ComponentModel;
+using System;
+
+namespace Site27Main.Items;
+
+[CustomItem(ItemType.GunA7)]
+public class HeavyTranq : CustomWeapon
+{
+    public override uint Id { get; set; } = 51;
+    public override string Name { get; set; } = "Heavy Tranquilizer";
+    public override string Description { get; set; } = "Shoots a tranquilizing dart to calm an SCP. May be dangerous to use on humans.";
+    public override byte ClipSize { get; set; } = 1;
+    public override float Weight { get; set; }
+    public override SpawnProperties? SpawnProperties { get; set; }
+    public override bool FriendlyFire { get; set; } = true;
+
+    [Description("Time in seconds SCPs are affected by the heavy tranquilizer.")]
+    private float ScpDuration { get; set; } = 90f;
+
+    [Description("Time in seconds humans are affected by the heavy tranquilizer.")]
+    private float HumanDuration { get; set; } = 150f;
+
+    private readonly Random _rnd = new Random();
+
+    protected override void OnHurting(HurtingEventArgs ev)
+    {
+        var target = ev.Player;
+
+        ev.Amount = Plugin.Instance.Config.HeavyTranqDamage;
+
+        if (ev.Player.IsDead) return;
+        if (!ev.Player.IsConnected) return;
+
+
+        if (target.IsScp)
+        {
+            target.EnableEffect(Exiled.API.Enums.EffectType.Concussed, ScpDuration);
+            target.EnableEffect(Exiled.API.Enums.EffectType.Slowness, 25, ScpDuration);
+            target.EnableEffect(Exiled.API.Enums.EffectType.Blinded, 30, ScpDuration);
+            target.ShowHint("<color=#FF0000>You were hit by a Heavy Tranquilizer! You are tranquilized for a few minutes...</color>", 15f);
+            Log.Debug($"Player {target.Nickname} was hit by a Heavy Tranquilizer, applying effects for {ScpDuration}");
+            return;
+        }
+
+        target.EnableEffect(Exiled.API.Enums.EffectType.Concussed, HumanDuration);
+        target.EnableEffect(Exiled.API.Enums.EffectType.Slowness, 45, HumanDuration);
+        target.EnableEffect(Exiled.API.Enums.EffectType.Exhausted, HumanDuration);
+        target.EnableEffect(Exiled.API.Enums.EffectType.Blinded, 45, HumanDuration);
+
+        var arrestChance = _rnd.Next(1, 5);
+        if (arrestChance == 1)
+        {
+            target.EnableEffect(Exiled.API.Enums.EffectType.CardiacArrest);
+            target.ShowHint("<color=#FF0000>You were hit by a Heavy Tranquilizer! Your heart spasms...</color>", 15f);
+            Log.Debug($"Player {target.Nickname} was hit by a Heavy Tranquilizer, rolled {arrestChance}, applying cardiac arrest and effects for {HumanDuration}");
+        }
+        else
+        {
+            target.ShowHint("<color=#FF0000>You were hit by a Heavy Tranquilizer! It incapacitates you. You don't feel very good...</color>", 15f);
+            Log.Debug($"Player {target.Nickname} was hit by a Heavy Tranquilizer, rolled {arrestChance}, applying effects for {HumanDuration}");
+        }
+    }
+}
